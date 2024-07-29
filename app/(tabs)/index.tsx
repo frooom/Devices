@@ -8,6 +8,8 @@ import {
   Text,
   View,
   TouchableOpacity,
+  StyleProp, 
+  TextStyle
 } from "react-native";
 import { useState, useEffect } from "react";
 import bleManagerInstance, { BleManager } from "react-native-ble-plx";
@@ -24,20 +26,37 @@ import { useFonts } from "expo-font";
 import { requestPermissions } from "./../../permissions";
 import { Colors } from "react-native/Libraries/NewAppScreen";
 
+interface Device {
+  id: string;
+  name: string;
+  status: 'connected' | 'connecting' | 'disconnecting' | 'unpaired (free)' | 'disconnected (paired)';
+}
+
+interface DeviceMap {
+  [id: string]: Device;
+}
+
+interface ScanningState {
+  devices: Device[];
+  scanning: boolean;
+  selectedDevice: Device | null;
+  modalVisible: boolean;
+}
+
 let manager = new BleManager();
 
 const Scanning = () => {
-  const [devices, setDevices] = useState([]);
+  const [devices, setDevices] = useState<Device[]>([]);
   // const [devices, setDevices] = useState([
   //   { id: "1", name: "Device name #1", status: "connected" },
   //   { id: "2", name: "Device name #2", status: "connecting" },
-  //   { id: "3", name: "Device name #3", status: "disconnected" },
+  //   { id: "3", name: "Device name #3", status: "disconnecting" },
   //   { id: "4", name: "Device name #4", status: "unpaired (free)" },
   //   { id: "5", name: "Device name #5", status: "disconnected (paired)" },
   // ]);
-  const [scanning, setScanning] = useState(false);
-  const [selectedDevice, setSelectedDevice] = useState(null);
-  const [modalVisible, setModalVisible] = useState(false);
+  const [scanning, setScanning] = useState<boolean>(false);
+  const [selectedDevice, setSelectedDevice] = useState<Device | null>(null);
+  const [modalVisible, setModalVisible] = useState<boolean>(false);
 
   useEffect(() => {
     loadStoredDeviceStatuses();
@@ -62,14 +81,14 @@ const Scanning = () => {
     try {
       const storedDevices = await AsyncStorage.getItem("devices");
       if (storedDevices) {
-        setDevices(JSON.parse(storedDevices));
+        setDevices(JSON.parse(storedDevices) as Device[]);
       }
     } catch (error) {
       console.log("Failed to load device statuses", error);
     }
   };
 
-  const saveDeviceStatuses = async (updatedDevices) => {
+  const saveDeviceStatuses = async (updatedDevices: Device[]) => {
     try {
       await AsyncStorage.setItem("devices", JSON.stringify(updatedDevices));
     } catch (error) {
@@ -129,12 +148,12 @@ const Scanning = () => {
     }, 3000);
   };
 
-  const handleDevicePress = (device) => {
+  const handleDevicePress = (device: Device) => {
     setSelectedDevice(device);
     setModalVisible(true);
   };
 
-  const handlePair = async (deviceId) => {
+  const handlePair = async (deviceId: string) => {
     const device = devices.find((d) => d.id === deviceId);
     if (!device) {
       Alert.alert("Error", "Device not found");
@@ -165,7 +184,7 @@ const Scanning = () => {
     }
   };
 
-  const handleUnpair = async (deviceId) => {
+  const handleUnpair = async (deviceId: string) => {
     const device = devices.find((d) => d.id === deviceId);
     if (!device) {
       Alert.alert("Error", "Device not found");
@@ -229,7 +248,7 @@ const Scanning = () => {
               </View>
               <Menu>
                 <MenuTrigger text="..." customStyles={triggerStyles} />
-                <MenuOptions>
+                <MenuOptions customStyles={menuOptionsStyles}>
                   <View style={styles.menuOptions}>
                     <MenuOption onSelect={() => handlePair(device.id)}>
                       <Text style={[styles.menuOption, { color: "white" }]}>
@@ -279,7 +298,7 @@ const Scanning = () => {
   );
 };
 
-const getStatusStyle = (status) => {
+const getStatusStyle = (status: Device['status']): StyleProp<TextStyle> => {
   switch (status) {
     case "unpaired (free)":
       return { color: "gray" };
@@ -382,8 +401,19 @@ const triggerStyles = {
   triggerWrapper: {
     padding: 5,
   },
+  triggerOuterWrapper: {
+  },
   triggerTouchable: {
     underlayColor: "darkgray",
+    activeOpacity: 70,
+  },
+};
+
+const menuOptionsStyles = {
+  optionsContainer: {
+    borderRadius: 10,
+  },
+  optionTouchable: {
     activeOpacity: 70,
   },
 };
