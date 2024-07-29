@@ -26,15 +26,6 @@ import { Colors } from "react-native/Libraries/NewAppScreen";
 
 let manager = new BleManager();
 
-const enableBluetooth = async () => {
-  try {
-    await manager.enable();
-    return true;
-  } catch (error) {
-    return false;
-  }
-};
-
 const Scanning = () => {
   const [devices, setDevices] = useState([]);
   // const [devices, setDevices] = useState([
@@ -50,21 +41,31 @@ const Scanning = () => {
 
   useEffect(() => {
     loadStoredDeviceStatuses();
-    return () => {
+    // return () => {
     //   if (manager) {
     //     manager.destroy();
     //   }
-    };
+    // };
   }, []);
+
+  const enableBluetooth = async () => {
+    try {
+      await manager.enable();
+      initializeBluetooth();
+      return true;
+    } catch (error) {
+      return false;
+    }
+  };
 
   const loadStoredDeviceStatuses = async () => {
     try {
-      const storedDevices = await AsyncStorage.getItem('devices');
+      const storedDevices = await AsyncStorage.getItem("devices");
       if (storedDevices) {
         setDevices(JSON.parse(storedDevices));
       }
     } catch (error) {
-      console.log('Failed to load device statuses', error);
+      console.log("Failed to load device statuses", error);
     }
   };
 
@@ -76,19 +77,30 @@ const Scanning = () => {
     }
   };
 
+  const checkBluetooth = async () => {
+    const bluetoothState = await manager.state();
+    if (bluetoothState === "PoweredOn") {
+      await initializeBluetooth();
+    } else {
+      const subscription = manager.onStateChange(async (state) => {
+        if (state === "PoweredOn") {
+          await initializeBluetooth();
+          subscription.remove();
+        }
+      }, true);
+
+      const enabled = await enableBluetooth();
+      if (!enabled) {
+        Alert.alert("Error", "Failed to enable Bluetooth");
+        subscription.remove();
+      }
+    }
+  };
+
   const initializeBluetooth = async () => {
     const hasPermissions = await requestPermissions();
     if (!hasPermissions) {
       return;
-    }
-
-    const bluetoothState = await manager.state();
-    if (bluetoothState !== "PoweredOn") {
-      const enabled = await enableBluetooth();
-      if (!enabled) {
-        Alert.alert("Error", "Bluetooth is not powered on");
-        return;
-      }
     }
 
     setScanning(true);
@@ -101,13 +113,9 @@ const Scanning = () => {
         return;
       }
       if (device && device.name) {
-        const deviceStatus = devices.find((d) => d.id === device.id) || {
-          id: device.id,
-          status: "unpaired (free)",
-        };
         discoveredDevices.set(device.id, {
           ...device,
-          status: deviceStatus.status,
+          status: "unpaired (free)",
         });
       }
     });
@@ -118,7 +126,7 @@ const Scanning = () => {
       setDevices(updatedDevices);
       saveDeviceStatuses(updatedDevices);
       setScanning(false);
-    }, 8000);
+    }, 3000);
   };
 
   const handleDevicePress = (device) => {
@@ -138,10 +146,10 @@ const Scanning = () => {
       );
       setDevices(updatedDevices);
       saveDeviceStatuses(updatedDevices);
-  
+
       const connectedDevice = await manager.connectToDevice(deviceId);
       await connectedDevice.discoverAllServicesAndCharacteristics();
-  
+
       const connectedDevices = devices.map((d) =>
         d.id === deviceId ? { ...d, status: "connected" } : d
       );
@@ -150,24 +158,24 @@ const Scanning = () => {
     } catch (error) {
       Alert.alert("Error", "Failed to connect to device");
       const updatedDevices = devices.map((d) =>
-        d.id === deviceId ? { ...d, status: "disconnected" } : d
+        d.id === deviceId ? { ...d, status: "unpaired (free)" } : d
       );
       setDevices(updatedDevices);
       saveDeviceStatuses(updatedDevices);
     }
   };
-  
+
   const handleUnpair = async (deviceId) => {
     const device = devices.find((d) => d.id === deviceId);
     if (!device) {
       Alert.alert("Error", "Device not found");
       return;
     }
-  
+
     try {
       await manager.cancelDeviceConnection(deviceId);
       const updatedDevices = devices.map((d) =>
-        d.id === deviceId ? { ...d, status: "unpaired (free)" } : d
+        d.id === deviceId ? { ...d, status: "disconnected (paired)" } : d
       );
       setDevices(updatedDevices);
       saveDeviceStatuses(updatedDevices);
@@ -180,7 +188,7 @@ const Scanning = () => {
     <MenuProvider>
       <ScrollView style={styles.container}>
         <Text style={styles.header}>All devices</Text>
-        <TouchableOpacity onPress={initializeBluetooth} disabled={scanning}>
+        <TouchableOpacity onPress={checkBluetooth} disabled={scanning}>
           <Text
             style={{
               fontSize: 18,
@@ -192,11 +200,20 @@ const Scanning = () => {
           </Text>
         </TouchableOpacity>
         {devices
-          .filter(device => device.name)
-          .map((device) => (
+          .filter((device) => device.name)
+          .map((device, index) => (
             <TouchableOpacity
               key={device.id}
-              style={styles.deviceContainer}
+              style={[
+                styles.deviceContainer,
+                {
+                  borderBottomEndRadius: index === devices.length - 1 ? 10 : 0,
+                  borderBottomStartRadius:
+                    index === devices.length - 1 ? 10 : 0,
+                  borderTopStartRadius: index === 0 ? 10 : 0,
+                  borderTopEndRadius: index === 0 ? 10 : 0,
+                },
+              ]}
               onPress={() => handleDevicePress(device)}
             >
               <View style={styles.deviceInfo}>
@@ -219,9 +236,10 @@ const Scanning = () => {
                         Connect
                       </Text>
                     </MenuOption>
-                    {/* <View style={styles.divider}/> */}
                     <MenuOption onSelect={() => handleUnpair(device.id)}>
-                      <Text style={{ color: "#F04438" }}>Remove</Text>
+                      <Text style={[styles.menuOption, { color: "#F04438" }]}>
+                        Remove
+                      </Text>
                     </MenuOption>
                   </View>
                 </MenuOptions>
@@ -272,7 +290,7 @@ const getStatusStyle = (status) => {
     case "disconnecting":
       return { color: "gray" };
     case "disconnected (paired)":
-      return { color: "#EAECF0" };
+      return { color: "gray" };
     default:
       return {};
   }
@@ -292,9 +310,9 @@ const styles = StyleSheet.create({
   },
   deviceContainer: {
     backgroundColor: "#2c2c2e",
-    borderRadius: 10,
     padding: 10,
-    marginBottom: 10,
+    marginBottom: 3,
+
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
@@ -347,11 +365,12 @@ const styles = StyleSheet.create({
     borderColor: "#FCFCFD",
     borderWidth: 1,
     backgroundColor: "#101828",
-    padding: 10,
     // color: '#fff'
   },
-  MenuOption: {
+  menuOption: {
     fontSize: 16,
+    lineHeight: 24,
+    padding: 10,
   },
 });
 
