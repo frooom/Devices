@@ -1,4 +1,4 @@
-package com.frooom.Devices
+package com.dm.devices
 
 import android.app.Application
 import android.content.res.Configuration

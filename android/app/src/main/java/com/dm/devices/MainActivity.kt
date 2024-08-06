@@ -1,4 +1,4 @@
-package com.frooom.Devices
+package com.dm.devices
 
 import android.os.Build
 import android.os.Bundle

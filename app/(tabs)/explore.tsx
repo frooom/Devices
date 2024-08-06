@@ -1,98 +1,184 @@
-import Ionicons from '@expo/vector-icons/Ionicons';
-import { StyleSheet, Image, Platform } from 'react-native';
+import {
+  ScrollView,
+  StyleSheet,
+  Platform,
+  Text,
+  View,
+  TouchableOpacity,
+  TouchableWithoutFeedback,
+  Alert,
+} from "react-native";
+import { useEffect } from "react";
+import { useRouter, useNavigation } from "expo-router";
+import { BleManager } from "react-native-ble-plx";
+import { Ionicons } from "@expo/vector-icons";
+import { useLocalSearchParams } from "expo-router";
 
-import { Collapsible } from '@/components/Collapsible';
-import { ExternalLink } from '@/components/ExternalLink';
-import ParallaxScrollView from '@/components/ParallaxScrollView';
-import { ThemedText } from '@/components/ThemedText';
-import { ThemedView } from '@/components/ThemedView';
+const manager = new BleManager();
 
-export default function TabTwoScreen() {
+const Details = () => {
+  const router = useRouter();
+  const navigation = useNavigation();
+  const { deviceName, deviceId, isConnectable, manufacturerData } =
+    useLocalSearchParams();
+  console.log({ deviceName, deviceId, isConnectable, manufacturerData });
+
+  useEffect(() => {}, []);
+
+  const handleDisconnect = async () => {
+    try {
+      await manager.cancelDeviceConnection(deviceId);
+      router.back();
+      Alert.alert(
+        "Disconnected",
+        "The device has been disconnected successfully."
+      );
+    } catch (error) {
+      Alert.alert("Error", "Failed to disconnect from the device.");
+    }
+  };
+
   return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#D0D0D0', dark: '#353636' }}
-      headerImage={<Ionicons size={310} name="code-slash" style={styles.headerImage} />}>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Explore</ThemedText>
-      </ThemedView>
-      <ThemedText>This app includes example code to help you get started.</ThemedText>
-      <Collapsible title="File-based routing">
-        <ThemedText>
-          This app has two screens:{' '}
-          <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> and{' '}
-          <ThemedText type="defaultSemiBold">app/(tabs)/explore.tsx</ThemedText>
-        </ThemedText>
-        <ThemedText>
-          The layout file in <ThemedText type="defaultSemiBold">app/(tabs)/_layout.tsx</ThemedText>{' '}
-          sets up the tab navigator.
-        </ThemedText>
-        <ExternalLink href="https://docs.expo.dev/router/introduction">
-          <ThemedText type="link">Learn more</ThemedText>
-        </ExternalLink>
-      </Collapsible>
-      <Collapsible title="Android, iOS, and web support">
-        <ThemedText>
-          You can open this project on Android, iOS, and the web. To open the web version, press{' '}
-          <ThemedText type="defaultSemiBold">w</ThemedText> in the terminal running this project.
-        </ThemedText>
-      </Collapsible>
-      <Collapsible title="Images">
-        <ThemedText>
-          For static images, you can use the <ThemedText type="defaultSemiBold">@2x</ThemedText> and{' '}
-          <ThemedText type="defaultSemiBold">@3x</ThemedText> suffixes to provide files for
-          different screen densities
-        </ThemedText>
-      </Collapsible>
-      <Collapsible title="Custom fonts">
-        <ThemedText>
-          Open <ThemedText type="defaultSemiBold">app/_layout.tsx</ThemedText> to see how to load{' '}
-          <ThemedText style={{ fontFamily: 'SpaceMono' }}>
-            custom fonts such as this one.
-          </ThemedText>
-        </ThemedText>
-        <ExternalLink href="https://docs.expo.dev/versions/latest/sdk/font">
-          <ThemedText type="link">Learn more</ThemedText>
-        </ExternalLink>
-      </Collapsible>
-      <Collapsible title="Light and dark mode components">
-        <ThemedText>
-          This template has light and dark mode support. The{' '}
-          <ThemedText type="defaultSemiBold">useColorScheme()</ThemedText> hook lets you inspect
-          what the user's current color scheme is, and so you can adjust UI colors accordingly.
-        </ThemedText>
-        <ExternalLink href="https://docs.expo.dev/develop/user-interface/color-themes/">
-          <ThemedText type="link">Learn more</ThemedText>
-        </ExternalLink>
-      </Collapsible>
-      <Collapsible title="Animations">
-        <ThemedText>
-          This template includes an example of an animated component. The{' '}
-          <ThemedText type="defaultSemiBold">components/HelloWave.tsx</ThemedText> component uses
-          the powerful <ThemedText type="defaultSemiBold">react-native-reanimated</ThemedText> library
-          to create a waving hand animation.
-        </ThemedText>
-        {Platform.select({
-          ios: (
-            <ThemedText>
-              The <ThemedText type="defaultSemiBold">components/ParallaxScrollView.tsx</ThemedText>{' '}
-              component provides a parallax effect for the header image.
-            </ThemedText>
-          ),
-        })}
-      </Collapsible>
-    </ParallaxScrollView>
+    <View style={styles.container}>
+      <View>
+        <View
+          style={{ flexDirection: "row", paddingVertical: 24, marginTop: 24 }}
+        >
+          <TouchableWithoutFeedback
+            onPress={() => {
+              console.log("Pressed");
+              router.back();
+            }}
+          >
+            <Ionicons
+              name="arrow-back"
+              size={20}
+              color={"#FFFFFF"}
+              style={styles.arrow}
+            />
+          </TouchableWithoutFeedback>
+          <View style={styles.header}>
+            <Text style={styles.headerText}>{deviceName}</Text>
+          </View>
+        </View>
+
+        <View>
+          <View style={styles.paramContainer}>
+            <Text style={styles.paramKey}>Id</Text>
+            <Text style={styles.paramValue}>{deviceId}</Text>
+          </View>
+          <View style={styles.paramContainer}>
+            <Text style={styles.paramKey}>isConnectable</Text>
+            <Text style={styles.paramValue}>{isConnectable}</Text>
+          </View>
+          {manufacturerData && (
+            <View style={styles.paramContainer}>
+              <Text style={styles.paramKey}>manufacturerData</Text>
+              <Text style={styles.paramValue}>{manufacturerData}</Text>
+            </View>
+          )}
+        </View>
+      </View>
+
+      <View
+        style={{
+          paddingHorizontal: 24,
+          paddingBottom: 34,
+          backgroundColor: "#101828",
+        }}
+      >
+        <TouchableOpacity
+          onPress={handleDisconnect}
+          style={{
+            backgroundColor: "#F04438",
+            padding: 16,
+            borderRadius: 16,
+            borderColor: "#1570EF",
+            borderWidth: 1,
+          }}
+        >
+          <Text
+            style={{
+              fontSize: 14,
+              textAlign: "center",
+              color: "#FFFFFF",
+              lineHeight: 20,
+              fontWeight: '700'
+            }}
+          >
+            Disconnect
+            {/* {scanning ? "Scanning..." : "Scan"} */}
+          </Text>
+        </TouchableOpacity>
+      </View>
+    </View>
   );
-}
+};
 
 const styles = StyleSheet.create({
-  headerImage: {
-    color: '#808080',
-    bottom: -90,
-    left: -35,
-    position: 'absolute',
+  container: {
+    flex: 1,
+    backgroundColor: "#101828",
+    padding: 20,
+    justifyContent: "space-between",
   },
-  titleContainer: {
-    flexDirection: 'row',
-    gap: 8,
+  headerText: {
+    fontSize: 16,
+    lineHeight: 24,
+    color: "#FFFFFF",
+    fontWeight: '700',
+  },
+  header: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    // marginBottom: 24,
+  },
+  arrow: {
+    position: "absolute",
+    left: 10,
+    top: 18,
+    paddingVertical: 9,
+    height: 38,
+  },
+  deviceContainer: {
+    backgroundColor: "#2c2c2e",
+    padding: 10,
+    marginBottom: 3,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  deviceInfo: {
+    flex: 1,
+    flexWrap: "wrap",
+  },
+  deviceName: {
+    fontSize: 18,
+    color: "white",
+  },
+
+  paramContainer: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginBottom: 10,
+    padding: 10,
+    backgroundColor: "#101828",
+    borderRadius: 5,
+  },
+  paramKey: {
+    fontSize: 16,
+    color: "#FFF",
+    width: "45%",
+    fontWeight: '500',
+  },
+  paramValue: {
+    fontSize: 14,
+    color: "#FFF",
+    width: "45%",
+    opacity: 0.75,
+    fontWeight: '400',
   },
 });
+
+export default Details;
